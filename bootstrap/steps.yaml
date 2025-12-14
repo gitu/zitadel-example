@@ -1,0 +1,42 @@
+FirstInstance:
+  Skip: false
+  MachineKeyPath: /secrets/machine.key
+  PatPath: /secrets/admin.pat
+  LoginClientPatPath: /secrets/login-client.pat
+  InstanceName: ZITADEL
+  DefaultLanguage: en
+  Org:
+    Name: ZITADEL
+    Human:
+      UserName: zitadel-admin
+      FirstName: ZITADEL
+      LastName: Admin
+      Email:
+        Verified: true
+      PreferredLanguage: en
+      Password: Password1!
+      PasswordChangeRequired: false
+    Machine:
+      Machine:
+        Username: zitadel-machine
+        Name: ZITADEL Machine
+      MachineKey:
+        ExpirationDate: 2029-01-01T00:00:00Z
+        Type: 1
+      Pat:
+        ExpirationDate: 2029-01-01T00:00:00Z
+    LoginClient:
+      Machine:
+        Username: zitadel-login-client
+        Name: zitadel-login-client
+      Pat:
+        ExpirationDate: 2029-01-01T00:00:00Z
+
+CorrectCreationDate:
+  FailAfter: 5m
+
+AddEventCreatedAt:
+  BulkAmount: 100
+
+FillFields:
+  BatchSize: 1000

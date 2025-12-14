@@ -1,0 +1,147 @@
+services:
+  zitadel:
+    restart: unless-stopped
+    image: ghcr.io/zitadel/zitadel:v4.7.5
+    command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --steps /current-dir/bootstrap/steps.yaml
+    environment:
+      #ZITADEL_EXTERNALDOMAIN: zitadel-7f000001.nip.io
+      ZITADEL_EXTERNALSECURE: false
+      ZITADEL_TLS_ENABLED: false
+      ZITADEL_EXTERNALDOMAIN: localhost
+
+      # Database connection settings.
+      ZITADEL_DATABASE_POSTGRES_HOST: db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: true # To use the login v1, set this to false.
+      #ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://zitadel-7f000001.nip.io:3000/ui/v2/login
+      #ZITADEL_OIDC_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?authRequest=
+      #ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/logout?post_logout_redirect=
+      #ZITADEL_SAML_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?samlRequest=
+
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:3000/ui/v2/login
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:3000/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?samlRequest=
+
+
+      # Enable debug logs
+      # ZITADEL_LOG_LEVEL: debug
+      # Write Access Logs to stdout.
+      # ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: true
+
+    healthcheck:
+      test:
+        - CMD
+        - /app/zitadel
+        - ready
+      interval: 2s
+      timeout: 60s
+      retries: 50
+      start_period: 5s
+    user: "0"
+    volumes:
+      - .:/current-dir:delegated
+      - ./secrets:/secrets:rw
+    ports:
+      - 8080:8080
+      - 3000:3000
+    networks:
+      - zitadel
+      #zitadel:
+        #aliases:
+        #  - zitadel-7f000001.nip.io
+    depends_on:
+      db:
+        condition: service_healthy
+
+  login:
+    restart: unless-stopped
+    image: ghcr.io/zitadel/zitadel-login:v4.7.5
+    environment:
+      #- ZITADEL_API_URL=http://zitadel-7f000001.nip.io:8080
+      - ZITADEL_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_BASE_PATH=/ui/v2/login
+      - ZITADEL_SERVICE_USER_TOKEN_FILE=/secrets/login-client.pat
+    network_mode: service:zitadel
+    user: "0"
+    volumes:
+      - ./secrets:/secrets:ro
+    depends_on:
+      zitadel:
+        condition: service_healthy
+        restart: false
+
+  db:
+    restart: unless-stopped
+    image: postgres:17
+    environment:
+      PGUSER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready
+        - -d
+        - zitadel
+        - -U
+        - postgres
+      interval: 2s
+      timeout: 30s
+      retries: 20
+      start_period: 10s
+    networks:
+      - zitadel
+    ports:
+      - 5432:5432
+    volumes:
+      - 'data:/var/lib/postgresql/data:rw'
+
+  zitadel-bootstrap:
+    build:
+      context: ./bootstrap
+    container_name: zitadel-bootstrap
+    entrypoint: ["/bin/bash", "/bootstrap/setup-dev.sh"]
+    environment:
+      ZITADEL_ISSUER: http://localhost:8080
+      ZITADEL_ORG: ZITADEL
+      ZITADEL_TOKEN_FILE: /current-dir/secrets/admin.pat
+    volumes:
+      - .:/current-dir:rw
+      - ./bootstrap:/bootstrap:ro
+    depends_on:
+      zitadel:
+        condition: service_healthy
+    networks:
+      - zitadel
+
+  go-app:
+    build:
+      context: ./go-app
+    container_name: zitadel-go-app
+    command: ["./sample-app", "-config", "/app/secrets/docker-client.yaml"]
+    volumes:
+      - ./secrets:/app/secrets:ro
+    ports:
+      - 8090:8090
+    depends_on:
+      zitadel:
+        condition: service_healthy
+     # zitadel-bootstrap:
+     #   condition: service_completed_successfully
+    networks:
+      - zitadel
+
+
+networks:
+  zitadel:
+
+volumes:
+  data:
