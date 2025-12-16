@@ -126,7 +126,7 @@ services:
     build:
       context: ./go-app
     container_name: zitadel-go-app
-    command: ["./sample-app", "-config", "/app/secrets/docker-client.yaml"]
+    command: ["./sample-app", "-config", "/app/secrets/docker-client.yaml", "-port", "8090"]
     volumes:
       - ./secrets:/app/secrets:ro
     ports:
