@@ -21,6 +21,11 @@ docker-compose up -d
 - Default admin login: `zitadel-admin@zitadel.zitadel-7f000001.nip.io`
 - Default password: `Password1!`
 
+http://zitadel-7f000001.nip.io:8080/ui/console?login_hint=zitadel-admin@zitadel.zitadel-7f000001.nip.io
+
+http://zitadel-7f000001.nip.io:8080/ui/console?login_hint=bob@example.com
+http://zitadel-7f000001.nip.io:8080/ui/console?login_hint=alice@example.com
+
 3. Run the bootstrap (optional - requires admin PAT):
 ```bash
 docker-compose run --rm zitadel-bootstrap

@@ -46,11 +46,13 @@ api_call() {
 # ---------------------------
 # Get org ID
 ORG_ID=$(api_call POST "zitadel.org.v2beta.OrganizationService/ListOrganizations" '{"filter": [{"nameFilter": {"name": "'$ZITADEL_ORG'", "method": "TEXT_QUERY_METHOD_EQUALS"}}]}' | jq -r '.organizations[0].id // empty')
+ORG_DOMAIN=$(api_call POST "zitadel.org.v2beta.OrganizationService/ListOrganizations" '{"filter": [{"nameFilter": {"name": "'$ZITADEL_ORG'", "method": "TEXT_QUERY_METHOD_EQUALS"}}]}' | jq -r '.organizations[0].primaryDomain // empty')
 
 if [[ -z "$ORG_ID" ]]; then
   echo "❌ Failed to retrieve organization ID for $ZITADEL_ORG"
   exit 1
 fi
+echo "org id: $ORG_ID - primaryDomain: $ORG_DOMAIN"
 
 # ----------------------------
 # Project
@@ -212,7 +214,7 @@ create_user() {
           \"isVerified\": true
         },
         \"password\": {
-          \"password\": \"Password123!\",
+          \"password\": \"Password1!\",
           \"changeRequired\": false
         }
       }
@@ -243,7 +245,7 @@ for user in alice bob; do
   cat >> $TARGET_DIR/test-users.yaml <<EOF
   - username: "$user"
     email: "$email"
-    password: "Password123!"
+    password: "Password1!"
     login_name: "$email"
     display_name: "$display_name"
 EOF
@@ -254,10 +256,11 @@ echo ""
 echo "📋 Login Instructions:"
 echo "   ℹ️  These are regular organization users, not initial setup users"
 echo "   🔐 Login format: email"
-echo "   👤 Available users: alice, bob"
-echo "   🔑 Password: Password123!"
+echo "   👤 Available users: alice@example.com, bob@example.com"
+echo "   🔑 Password: Password1!"
 
 echo ""
 echo "✅ ZITADEL bootstrap complete!"
 echo "🌐 Console URL: $ZITADEL_ISSUER/ui/console"
+echo "Login with admin: $ZITADEL_ISSUER/ui/console?login_hint=zitadel-admin@$ORG_DOMAIN"
 echo "🔐 Default org : $ZITADEL_ORG"

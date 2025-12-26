@@ -1,13 +1,14 @@
 services:
+
   zitadel:
     restart: unless-stopped
-    image: ghcr.io/zitadel/zitadel:v4.7.5
+    image: ghcr.io/zitadel/zitadel:v4.7.6
     command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --steps /current-dir/bootstrap/steps.yaml
     environment:
-      #ZITADEL_EXTERNALDOMAIN: zitadel-7f000001.nip.io
+      ZITADEL_EXTERNALDOMAIN: zitadel-7f000001.nip.io
+      ZITADEL_EXTERNALPORT: 8080
       ZITADEL_EXTERNALSECURE: false
       ZITADEL_TLS_ENABLED: false
-      ZITADEL_EXTERNALDOMAIN: localhost
 
       # Database connection settings.
       ZITADEL_DATABASE_POSTGRES_HOST: db
@@ -20,23 +21,17 @@ services:
       ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
       ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
 
-      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: true # To use the login v1, set this to false.
-      #ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://zitadel-7f000001.nip.io:3000/ui/v2/login
-      #ZITADEL_OIDC_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?authRequest=
-      #ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/logout?post_logout_redirect=
-      #ZITADEL_SAML_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?samlRequest=
-
-      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:3000/ui/v2/login
-      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?authRequest=
-      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:3000/ui/v2/login/logout?post_logout_redirect=
-      ZITADEL_SAML_DEFAULTLOGINURLV2: http://localhost:3000/ui/v2/login/login?samlRequest=
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: false # To use the login v1, set this to false.
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://zitadel-7f000001.nip.io:3000/ui/v2/login
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: http://zitadel-7f000001.nip.io:3000/ui/v2/login/login?samlRequest=
 
 
       # Enable debug logs
       # ZITADEL_LOG_LEVEL: debug
       # Write Access Logs to stdout.
-      # ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: true
-
+      ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: true
     healthcheck:
       test:
         - CMD
@@ -52,25 +47,26 @@ services:
       - ./secrets:/secrets:rw
     ports:
       - 8080:8080
-      - 3000:3000
     networks:
-      - zitadel
-      #zitadel:
-        #aliases:
-        #  - zitadel-7f000001.nip.io
+      zitadel:
+        aliases:
+          - zitadel-7f000001.nip.io
     depends_on:
       db:
         condition: service_healthy
 
   login:
     restart: unless-stopped
-    image: ghcr.io/zitadel/zitadel-login:v4.7.5
+    image: ghcr.io/zitadel/zitadel-login:v4.7.6
     environment:
-      #- ZITADEL_API_URL=http://zitadel-7f000001.nip.io:8080
-      - ZITADEL_API_URL=http://localhost:8080
+      - ZITADEL_API_URL=http://zitadel-7f000001.nip.io:8080
       - NEXT_PUBLIC_BASE_PATH=/ui/v2/login
       - ZITADEL_SERVICE_USER_TOKEN_FILE=/secrets/login-client.pat
-    network_mode: service:zitadel
+      - CUSTOM_REQUEST_HEADERS=Host:zitadel-7f000001.nip.io
+    networks:
+      - zitadel
+    ports:
+      - 3000:3000
     user: "0"
     volumes:
       - ./secrets:/secrets:ro
@@ -110,9 +106,10 @@ services:
     container_name: zitadel-bootstrap
     entrypoint: ["/bin/bash", "/bootstrap/setup-dev.sh"]
     environment:
-      ZITADEL_ISSUER: http://localhost:8080
+      ZITADEL_ISSUER: http://zitadel-7f000001.nip.io:8080
       ZITADEL_ORG: ZITADEL
       ZITADEL_TOKEN_FILE: /current-dir/secrets/admin.pat
+      TARGET_DIR: /current-dir/secrets
     volumes:
       - .:/current-dir:rw
       - ./bootstrap:/bootstrap:ro
@@ -134,8 +131,8 @@ services:
     depends_on:
       zitadel:
         condition: service_healthy
-     # zitadel-bootstrap:
-     #   condition: service_completed_successfully
+      zitadel-bootstrap:
+        condition: service_completed_successfully
     networks:
       - zitadel
 
