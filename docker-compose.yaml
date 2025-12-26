@@ -33,10 +33,7 @@ services:
       # Write Access Logs to stdout.
       ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: true
     healthcheck:
-      test:
-        - CMD
-        - /app/zitadel
-        - ready
+      test: [ "CMD", "/app/zitadel", "ready" ]
       interval: 2s
       timeout: 60s
       retries: 50
@@ -82,13 +79,7 @@ services:
       PGUSER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready
-        - -d
-        - zitadel
-        - -U
-        - postgres
+      test: [ "CMD-SHELL", "pg_isready" ]
       interval: 2s
       timeout: 30s
       retries: 20
